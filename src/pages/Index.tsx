@@ -1,644 +1,504 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Icon from "@/components/ui/icon";
 
-const NAV_ITEMS = [
-  { id: "hero", label: "Главная" },
-  { id: "relevance", label: "Актуальность" },
-  { id: "tasks", label: "Задачи" },
-  { id: "advantages", label: "Преимущества" },
-  { id: "equipment", label: "Оборудование" },
-  { id: "results", label: "Результаты" },
-];
+const ACCENT = "#C8A96E";
+const BORDER = "rgba(200,169,110,0.2)";
+const CARD = "rgba(255,255,255,0.04)";
+const DARK = "#0F1923";
 
-const TASKS = [
-  {
-    num: "01",
-    title: "Цифровизация знаний",
-    desc: "Освоение современных цифровых инструментов для исследовательской деятельности: GeoGebra, Excel, онлайн-платформы анализа данных",
-    sub: ["Сбор и обработка данных", "Визуализация результатов", "Цифровые отчёты"],
-  },
-  {
-    num: "02",
-    title: "Математическое моделирование",
-    desc: "Построение математических моделей реальных процессов и явлений на основе собранных данных",
-    sub: ["Постановка гипотез", "Верификация моделей", "Интерпретация выводов"],
-  },
-  {
-    num: "03",
-    title: "Самостоятельные исследования",
-    desc: "Развитие навыков автономной постановки целей и проведения полноценных научных исследований",
-    sub: ["Планирование эксперимента", "Оформление проекта", "Публичная защита"],
-  },
-];
-
-const ADVANTAGES = [
-  { icon: "Cpu", val: "87%", label: "рост интереса к точным наукам", color: "#4FC3F7" },
-  { icon: "TrendingUp", val: "+34%", label: "улучшение успеваемости по математике", color: "#81C784" },
-  { icon: "Users", val: "120+", label: "учащихся прошли программу", color: "#FFB74D" },
-  { icon: "Award", val: "12", label: "призовых мест на олимпиадах", color: "#CE93D8" },
-];
-
-const EQUIPMENT = [
-  {
-    name: "Компьютерный класс",
-    desc: "20 рабочих станций с профессиональным программным обеспечением",
-    img: "https://cdn.poehali.dev/projects/6dac793f-6b1f-4cdd-bdfd-94aae5294296/files/62d711b6-a7c6-45b8-a00a-8ea3453f11a6.jpg",
-  },
-  {
-    name: "Исследовательская лаборатория",
-    desc: "Приборы и оборудование для научных экспериментов и проектной работы",
-    img: "https://cdn.poehali.dev/projects/6dac793f-6b1f-4cdd-bdfd-94aae5294296/files/94c428b4-ca50-4a71-bc73-dc4249068396.jpg",
-  },
-];
-
-const FEEDBACK = [
-  { name: "Алина К., 8 класс", text: "Теперь я понимаю, зачем нужна математика — мы строили настоящие модели погоды!", role: "Ученица" },
-  { name: "Марина Петрова", text: "Дочь стала сама искать задачи и решать их с помощью программ. Это невероятно!", role: "Родитель" },
-  { name: "Иван Соколов", text: "Цифровые инструменты помогли мне выиграть районную олимпиаду по математике.", role: "Ученик, победитель олимпиады" },
-];
-
-function AnimatedNumber({ target, suffix = "" }: { target: number; suffix?: string }) {
-  const [val, setVal] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          let start = 0;
-          const duration = 1400;
-          const step = (timestamp: number) => {
-            if (!start) start = timestamp;
-            const progress = Math.min((timestamp - start) / duration, 1);
-            const eased = 1 - Math.pow(1 - progress, 3);
-            setVal(Math.round(eased * target));
-            if (progress < 1) requestAnimationFrame(step);
-          };
-          requestAnimationFrame(step);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.3 }
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, [target]);
-  return <span ref={ref}>{val}{suffix}</span>;
+function SH({ num, title }: { num: string; title: string }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 14, paddingBottom: 14, borderBottom: `1px solid ${BORDER}`, marginBottom: 0, flexShrink: 0 }}>
+      <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: ACCENT, letterSpacing: "0.2em" }}>{num} /</span>
+      <h2 style={{ fontFamily: "'Oswald',sans-serif", fontSize: "clamp(1rem,2.4vw,1.5rem)", color: "#F0EDE8", letterSpacing: "0.05em", fontWeight: 500, margin: 0 }}>{title}</h2>
+    </div>
+  );
 }
 
-function BarChart() {
-  const data = [
-    { label: "2022", before: 42, after: 58 },
-    { label: "2023", before: 48, after: 71 },
-    { label: "2024", before: 51, after: 84 },
-    { label: "2025", before: 53, after: 91 },
-  ];
-  const [animated, setAnimated] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) { setAnimated(true); observer.disconnect(); }
-      },
-      { threshold: 0.3 }
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
+function Dot({ color = ACCENT }: { color?: string }) {
+  return <div style={{ width: 5, height: 5, borderRadius: "50%", background: color, flexShrink: 0, marginTop: 5 }} />;
+}
+
+function Card({ children, style = {} }: { children: React.ReactNode; style?: React.CSSProperties }) {
+  return <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 14, ...style }}>{children}</div>;
+}
+
+function Tag({ text }: { text: string }) {
   return (
-    <div ref={ref} className="w-full">
-      <div className="flex gap-4 mb-4 text-xs font-mono">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-sm" style={{ background: "#1E3A5F" }} />
-          <span className="text-slate-400">До внедрения</span>
+    <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: ACCENT, textTransform: "uppercase" as const, letterSpacing: "0.12em", display: "block", marginBottom: 8 }}>
+      {text}
+    </span>
+  );
+}
+
+// ── SLIDES ──────────────────────────────────────────────────────────────────
+
+function S0() {
+  return (
+    <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "2rem", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", backgroundImage: "linear-gradient(rgba(200,169,110,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(200,169,110,.04) 1px,transparent 1px)", backgroundSize: "60px 60px" }} />
+      <div style={{ position: "absolute", top: "12%", left: "10%", width: 280, height: 280, borderRadius: "50%", background: "radial-gradient(circle,rgba(200,169,110,.12) 0%,transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: "10%", right: "8%", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle,rgba(200,169,110,.07) 0%,transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ position: "relative", maxWidth: 680 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginBottom: 28 }}>
+          <div style={{ width: 36, height: 1, background: ACCENT }} />
+          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: ACCENT, letterSpacing: "0.22em", textTransform: "uppercase" }}>Центр «Точка роста» · 2024–2025</span>
+          <div style={{ width: 36, height: 1, background: ACCENT }} />
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-sm" style={{ background: "#4FC3F7" }} />
-          <span className="text-slate-400">После внедрения</span>
+        <h1 style={{ fontFamily: "'Cormorant',serif", fontSize: "clamp(1.7rem,3.8vw,3rem)", fontWeight: 600, color: "#F0EDE8", lineHeight: 1.22, margin: "0 0 1.5rem" }}>
+          Развитие исследовательских навыков подростков<br />через интеграцию цифровых технологий и математики
+        </h1>
+        <div style={{ width: 72, height: 2, background: `linear-gradient(90deg,transparent,${ACCENT},transparent)`, margin: "0 auto 1.5rem" }} />
+        <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 14, color: "rgba(240,237,232,.5)", margin: "0 0 2rem", lineHeight: 1.6 }}>в учебном процессе центра «Точка роста»</p>
+        <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 13, color: "rgba(240,237,232,.35)", fontStyle: "italic", margin: "0 0 6px" }}>[ФИО учителя] · [Должность] · [Школа] · [Населённый пункт]</p>
+        <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "rgba(200,169,110,.4)", letterSpacing: "0.15em" }}>2024 — 2025 ГОД</p>
+      </div>
+    </div>
+  );
+}
+
+function S1() {
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "2rem 2.5rem", overflow: "hidden", gap: 16 }}>
+      <SH num="01" title="Актуальность и цель" />
+      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, minHeight: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {[
+            { icon: "AlertCircle", label: "Проблема", text: "Традиционная система образования не успевает за темпом технологических изменений. Подростки не видят практического применения теоретических знаний." },
+            { icon: "Users", label: "Целевая группа", text: "Учащиеся 7-х классов (12–14 лет) — ключевой период формирования исследовательского интереса и критического мышления." },
+          ].map((item, i) => (
+            <Card key={i} style={{ padding: "1.1rem 1.3rem", flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                <Icon name={item.icon as "AlertCircle"} size={13} style={{ color: ACCENT }} />
+                <Tag text={item.label} />
+              </div>
+              <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 13, color: "rgba(240,237,232,.7)", lineHeight: 1.65, margin: 0 }}>{item.text}</p>
+            </Card>
+          ))}
+        </div>
+        <Card style={{ padding: "1.4rem 1.5rem", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+              <Icon name="Target" size={13} style={{ color: ACCENT }} />
+              <Tag text="Цель проекта" />
+            </div>
+            <p style={{ fontFamily: "'Cormorant',serif", fontSize: "clamp(.9rem,1.7vw,1.2rem)", color: "#F0EDE8", lineHeight: 1.5, fontStyle: "italic", margin: 0 }}>
+              «Создание условий для эффективного освоения учащимися методов исследовательской деятельности с применением цифровых технологий»
+            </p>
+          </div>
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: `1px solid ${BORDER}` }}>
+            {[
+              { icon: "Calendar", text: "Учебный год 2024–2025" },
+              { icon: "Clock", text: "34 занятия по 45 минут" },
+              { icon: "BookOpen", text: "Математика + цифровые технологии" },
+            ].map((r, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <Icon name={r.icon as "Calendar"} size={12} style={{ color: ACCENT, flexShrink: 0 }} />
+                <span style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 12, color: "rgba(240,237,232,.52)" }}>{r.text}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function S2() {
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "2rem 2.5rem", overflow: "hidden", gap: 16 }}>
+      <SH num="02" title="Основные задачи" />
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 14, justifyContent: "center" }}>
+        <div style={{ background: "rgba(200,169,110,.07)", border: "1px solid rgba(200,169,110,.3)", borderRadius: 14, padding: "1.2rem 1.6rem", display: "flex", alignItems: "flex-start", gap: 18 }}>
+          <span style={{ fontFamily: "'Cormorant',serif", fontSize: 40, color: ACCENT, lineHeight: 1, flexShrink: 0, marginTop: -4 }}>→</span>
+          <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 15, color: "#F0EDE8", lineHeight: 1.62, margin: 0 }}>
+            Освоение современной молодёжью основ цифровизации и её применимости в исследовании реальной действительности
+          </p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+          {[
+            { icon: "TrendingUp", title: "Устойчивый интерес", desc: "Формирование интереса к математическим дисциплинам и применению цифровых технологий в учёбе и жизни" },
+            { icon: "Compass",    title: "Самостоятельность",  desc: "Развитие навыков постановки целей, планирования и проведения самостоятельных исследований" },
+          ].map((s, i) => (
+            <Card key={i} style={{ padding: "1.1rem 1.3rem" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <Icon name={s.icon as "TrendingUp"} size={13} style={{ color: ACCENT }} />
+                <Tag text={s.title} />
+              </div>
+              <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 13, color: "rgba(240,237,232,.62)", lineHeight: 1.6, margin: 0 }}>{s.desc}</p>
+            </Card>
+          ))}
         </div>
       </div>
-      <div className="flex items-end gap-3 h-40">
-        {data.map((d, i) => (
-          <div key={i} className="flex-1 flex flex-col items-center gap-1">
-            <div className="w-full flex gap-1 items-end h-32">
-              <div
-                className="flex-1 rounded-sm transition-all duration-1000 ease-out"
-                style={{
-                  height: animated ? `${d.before}%` : "0%",
-                  background: "#1E3A5F",
-                  transitionDelay: `${i * 120}ms`,
-                }}
-              />
-              <div
-                className="flex-1 rounded-sm transition-all duration-1000 ease-out"
-                style={{
-                  height: animated ? `${d.after}%` : "0%",
-                  background: "#4FC3F7",
-                  transitionDelay: `${i * 120 + 60}ms`,
-                }}
-              />
+    </div>
+  );
+}
+
+function S3() {
+  const tools = ["GeoGebra","Microsoft Excel","Desmos","Python","Wolfram Alpha","Google Таблицы","Scratch","Яндекс Учебник","РЭШ","Kahoot"];
+  const steps = [
+    { icon: "Database",   label: "Сбор",          desc: "Наблюдения, опросы" },
+    { icon: "Cpu",        label: "Обработка",     desc: "Анализ данных" },
+    { icon: "LineChart",  label: "Интерпретация", desc: "Закономерности" },
+    { icon: "FileText",   label: "Представление", desc: "Отчёты, проекты" },
+  ];
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "2rem 2.5rem", overflow: "hidden", gap: 16 }}>
+      <SH num="03" title="Методология и инструменты" />
+      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "3fr 2fr", gap: 14, minHeight: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <Card style={{ padding: "1.1rem" }}>
+            <Tag text="Принцип работы с данными" />
+            <div style={{ display: "flex", alignItems: "stretch", gap: 6 }}>
+              {steps.map((s, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6, flex: 1 }}>
+                  <div style={{ flex: 1, background: "rgba(200,169,110,.05)", border: `1px solid ${BORDER}`, borderRadius: 10, padding: "0.65rem 0.4rem", textAlign: "center" }}>
+                    <Icon name={s.icon as "Database"} size={15} style={{ color: ACCENT, margin: "0 auto 3px" }} />
+                    <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 8, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.07em", margin: "0 0 2px" }}>{s.label}</p>
+                    <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 10, color: "rgba(240,237,232,.4)", lineHeight: 1.3, margin: 0 }}>{s.desc}</p>
+                  </div>
+                  {i < steps.length - 1 && <Icon name="ChevronRight" size={11} style={{ color: "rgba(200,169,110,.3)", flexShrink: 0 }} />}
+                </div>
+              ))}
             </div>
-            <span className="text-xs font-mono text-slate-500">{d.label}</span>
+          </Card>
+          <Card style={{ padding: "1.1rem", flex: 1 }}>
+            <Tag text="Примеры заданий" />
+            {[
+              "Построение математических моделей реальных явлений (погода, демография, финансы)",
+              "Анализ статистических данных с визуализацией в GeoGebra",
+              "Интерактивные графики по результатам собственных опросов учащихся",
+            ].map((item, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
+                <Dot />
+                <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 12.5, color: "rgba(240,237,232,.65)", lineHeight: 1.55, margin: 0 }}>{item}</p>
+              </div>
+            ))}
+          </Card>
+        </div>
+        <Card style={{ padding: "1.1rem" }}>
+          <Tag text="Цифровые платформы" />
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {tools.map(t => (
+              <span key={t} style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "rgba(240,237,232,.58)", background: "rgba(255,255,255,.04)", border: "1px solid rgba(200,169,110,.14)", borderRadius: 6, padding: "3px 8px" }}>{t}</span>
+            ))}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function S4() {
+  const stages = [
+    { num: "I",   title: "Изучение основ",   color: ACCENT,    items: ["Знакомство с ключевыми понятиями","Постановка исследовательских задач","Освоение цифровых инструментов"] },
+    { num: "II",  title: "Практика",         color: "#81C784", items: ["Практические задания с реальными данными","Построение математических моделей","Командная и индивидуальная работа"] },
+    { num: "III", title: "Итоговые проекты", color: "#64B5F6", items: ["Оформление исследовательских отчётов","Подготовка проектов к защите","Публичное представление результатов"] },
+  ];
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "2rem 2.5rem", overflow: "hidden", gap: 16 }}>
+      <SH num="04" title="Этапы реализации" />
+      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16 }}>
+        {stages.map((s, i) => (
+          <div key={i} style={{ background: CARD, border: `1px solid ${s.color}40`, borderRadius: 16, padding: "1.5rem", display: "flex", flexDirection: "column" }}>
+            <div style={{ fontFamily: "'Cormorant',serif", fontSize: 48, color: s.color, opacity: .2, lineHeight: 1, marginBottom: 4 }}>{s.num}</div>
+            <p style={{ fontFamily: "'Oswald',sans-serif", fontSize: 16, color: "#F0EDE8", letterSpacing: "0.04em", marginBottom: 10 }}>{s.title}</p>
+            <div style={{ width: 26, height: 2, background: s.color, marginBottom: 14, opacity: .7 }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, flex: 1 }}>
+              {s.items.map((item, j) => (
+                <div key={j} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                  <Dot color={s.color} />
+                  <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 12.5, color: "rgba(240,237,232,.65)", lineHeight: 1.55, margin: 0 }}>{item}</p>
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
-      <p className="text-xs text-slate-500 mt-3 font-mono">
-        % учащихся, демонстрирующих интерес к исследовательской деятельности
-      </p>
     </div>
   );
 }
 
-function RadarChart() {
-  const skills = [
-    { label: "Анализ данных", before: 35, after: 82 },
-    { label: "Математика", before: 48, after: 79 },
-    { label: "Цифр. инструменты", before: 22, after: 88 },
-    { label: "Самостоятельность", before: 41, after: 75 },
-    { label: "Коммуникация", before: 55, after: 83 },
-    { label: "Критич. мышление", before: 38, after: 77 },
+function S5() {
+  const eq = [
+    { icon: "Monitor",      label: "Компьютерный класс", desc: "20 рабочих станций с ПО" },
+    { icon: "Tablet",       label: "Планшеты",           desc: "Для полевых исследований" },
+    { icon: "Printer",      label: "МФУ",                desc: "Печать и сканирование" },
+    { icon: "Wifi",         label: "Интернет",           desc: "Высокоскоростной доступ" },
+    { icon: "FlaskConical", label: "Лаборатория",        desc: "Приборы и реактивы" },
+    { icon: "Projector",    label: "Проектор",           desc: "Интерактивная доска" },
   ];
-  const [animated, setAnimated] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) { setTimeout(() => setAnimated(true), 200); observer.disconnect(); }
-      },
-      { threshold: 0.3 }
-    );
-    if (ref.current) observer.observe(ref.current);
-    return () => observer.disconnect();
-  }, []);
-
-  const cx = 120, cy = 120, r = 85;
-  const n = skills.length;
-  const toXY = (i: number, pct: number) => {
-    const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
-    return { x: cx + (r * pct / 100) * Math.cos(angle), y: cy + (r * pct / 100) * Math.sin(angle) };
-  };
-  const polygon = (vals: number[]) =>
-    vals.map((v, i) => { const p = toXY(i, v); return `${p.x},${p.y}`; }).join(" ");
-
   return (
-    <div ref={ref} className="flex flex-col items-center w-full">
-      <svg width="240" height="240" viewBox="0 0 240 240">
-        {[20, 40, 60, 80, 100].map((lvl) => (
-          <polygon key={lvl} points={polygon(Array(n).fill(lvl))} fill="none" stroke="#1E3A5F" strokeWidth="1" />
-        ))}
-        {skills.map((_, i) => {
-          const end = toXY(i, 100);
-          return <line key={i} x1={cx} y1={cy} x2={end.x} y2={end.y} stroke="#1E3A5F" strokeWidth="1" />;
-        })}
-        <polygon
-          points={polygon(animated ? skills.map((s) => s.before) : Array(n).fill(0))}
-          fill="rgba(30,58,95,0.6)"
-          stroke="#2563EB"
-          strokeWidth="1.5"
-          style={{ transition: "all 1.2s ease-out" }}
-        />
-        <polygon
-          points={polygon(animated ? skills.map((s) => s.after) : Array(n).fill(0))}
-          fill="rgba(79,195,247,0.18)"
-          stroke="#4FC3F7"
-          strokeWidth="2"
-          style={{ transition: "all 1.2s ease-out 0.3s" }}
-        />
-        {skills.map((s, i) => {
-          const pos = toXY(i, 118);
-          return (
-            <text
-              key={i}
-              x={pos.x}
-              y={pos.y}
-              textAnchor="middle"
-              dominantBaseline="middle"
-              fontSize="7.5"
-              fill="#94a3b8"
-              fontFamily="IBM Plex Mono"
-            >
-              {s.label}
-            </text>
-          );
-        })}
-      </svg>
-      <div className="flex gap-5 text-xs font-mono mt-1">
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-0.5 bg-blue-700" />
-          <span className="text-slate-400">До программы</span>
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-4 h-0.5" style={{ background: "#4FC3F7" }} />
-          <span className="text-slate-400">После программы</span>
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "2rem 2.5rem", overflow: "hidden", gap: 16 }}>
+      <SH num="05" title="Ресурсы и оборудование" />
+      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, minHeight: 0 }}>
+        <Card style={{ padding: "1.3rem" }}>
+          <Tag text="Техническое оснащение" />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {eq.map((e, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "0.65rem 0.8rem", borderRadius: 10, background: "rgba(255,255,255,.03)" }}>
+                <div style={{ width: 30, height: 30, borderRadius: 8, background: "rgba(200,169,110,.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Icon name={e.icon as "Monitor"} size={13} style={{ color: ACCENT }} />
+                </div>
+                <div>
+                  <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 11.5, color: "#F0EDE8", fontWeight: 500, margin: 0 }}>{e.label}</p>
+                  <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 8.5, color: "rgba(240,237,232,.32)", margin: 0 }}>{e.desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <Card style={{ padding: "1.3rem" }}>
+          <Tag text="Фото кабинета «Точка роста»" />
+          <div style={{ background: "rgba(255,255,255,.02)", border: "1px dashed rgba(200,169,110,.18)", borderRadius: 12, aspectRatio: "16/9", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <Icon name="ImagePlus" size={24} style={{ color: "rgba(200,169,110,.25)" }} />
+            <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: "rgba(240,237,232,.2)", textAlign: "center", margin: 0 }}>Добавьте фотографию<br />вашего кабинета</p>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+function S6() {
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "2rem 2.5rem", overflow: "hidden", gap: 16 }}>
+      <SH num="06" title="Пример успешного проекта" />
+      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "2fr 1fr", gap: 16, minHeight: 0 }}>
+        <Card style={{ padding: "1.5rem" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+            <div style={{ width: 32, height: 32, borderRadius: 9, background: "rgba(200,169,110,.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon name="Star" size={15} style={{ color: ACCENT }} />
+            </div>
+            <div>
+              <p style={{ fontFamily: "'Oswald',sans-serif", fontSize: 15, color: "#F0EDE8", letterSpacing: "0.04em", margin: 0 }}>[Название проекта учащегося]</p>
+              <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: "rgba(200,169,110,.5)", margin: 0 }}>[ФИО ученика] · 7 класс · 2024–2025</p>
+            </div>
+          </div>
+          <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 13, color: "rgba(240,237,232,.6)", lineHeight: 1.65, margin: "0 0 16px" }}>
+            Опишите суть проекта: что исследовал ученик, какие данные собирал, какие инструменты использовал. Это место для вашего лучшего и конкретного примера.
+          </p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+            {["Постановка задачи","Методы исследования","Ключевой вывод"].map((label, i) => (
+              <div key={i} style={{ background: "rgba(255,255,255,.03)", borderRadius: 10, padding: "0.7rem", textAlign: "center" }}>
+                <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 8, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 4px" }}>{label}</p>
+                <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 11, color: "rgba(240,237,232,.28)", margin: 0 }}>Заполните</p>
+              </div>
+            ))}
+          </div>
+        </Card>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <Card style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <Icon name="Image" size={22} style={{ color: "rgba(200,169,110,.2)" }} />
+            <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 8, color: "rgba(240,237,232,.17)", textAlign: "center", margin: 0 }}>Фото / схема<br />эксперимента</p>
+          </Card>
+          <Card style={{ padding: "1rem" }}>
+            <Tag text="Результат" />
+            <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 11.5, color: "rgba(240,237,232,.42)", lineHeight: 1.5, margin: 0 }}>Главный итог и достижение проекта</p>
+          </Card>
         </div>
       </div>
     </div>
   );
 }
 
-function useScrollSpy() {
-  const [active, setActive] = useState("hero");
-  useEffect(() => {
-    const handler = () => {
-      for (const item of [...NAV_ITEMS].reverse()) {
-        const el = document.getElementById(item.id);
-        if (el && el.getBoundingClientRect().top <= 120) {
-          setActive(item.id);
-          return;
-        }
-      }
-      setActive("hero");
-    };
-    window.addEventListener("scroll", handler, { passive: true });
-    return () => window.removeEventListener("scroll", handler);
-  }, []);
-  return active;
+function S7() {
+  const metrics = [
+    { val: "↑ 34%", label: "Успеваемость по математике",      color: "#81C784" },
+    { val: "87%",   label: "Рост интереса к точным наукам",   color: ACCENT },
+    { val: "12",    label: "Призовых мест на олимпиадах",     color: "#CE93D8" },
+    { val: "120+",  label: "Учащихся прошли программу",       color: "#64B5F6" },
+  ];
+  const fb = [
+    { role: "Ученица",              text: "Теперь я понимаю, зачем нужна математика — мы строили настоящие модели погоды!" },
+    { role: "Родитель",             text: "Дочь стала сама искать задачи и решать их с помощью программ. Это невероятно!" },
+    { role: "Победитель олимпиады", text: "Цифровые инструменты помогли мне выиграть районную олимпиаду по математике." },
+  ];
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "2rem 2.5rem", overflow: "hidden", gap: 16 }}>
+      <SH num="07" title="Оценка эффективности" />
+      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, minHeight: 0 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+            {metrics.map((m, i) => (
+              <div key={i} style={{ background: CARD, border: "1px solid rgba(200,169,110,.14)", borderRadius: 12, padding: "0.9rem", textAlign: "center" }}>
+                <p style={{ fontFamily: "'Cormorant',serif", fontSize: 32, fontWeight: 600, color: m.color, lineHeight: 1, margin: 0 }}>{m.val}</p>
+                <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 8, color: "rgba(240,237,232,.43)", marginTop: 4, lineHeight: 1.4, margin: "4px 0 0" }}>{m.label}</p>
+              </div>
+            ))}
+          </div>
+          <Card style={{ padding: "1rem", flex: 1 }}>
+            <Tag text="Итоги контрольных срезов" />
+            <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 12.5, color: "rgba(240,237,232,.52)", lineHeight: 1.62, margin: 0 }}>
+              Добавьте конкретные данные до и после программы: средний балл, количество участников, динамику показателей.
+            </p>
+          </Card>
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: ACCENT, letterSpacing: "0.15em", textTransform: "uppercase", margin: 0 }}>Обратная связь</p>
+          {fb.map((f, i) => (
+            <Card key={i} style={{ padding: "0.85rem 1.1rem", flex: 1 }}>
+              <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 8, color: ACCENT, textTransform: "uppercase", letterSpacing: "0.1em", margin: "0 0 5px" }}>{f.role}</p>
+              <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 12.5, color: "rgba(240,237,232,.66)", lineHeight: 1.55, fontStyle: "italic", margin: 0 }}>«{f.text}»</p>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 }
+
+function S8() {
+  const items = [
+    { icon: "Zap",     title: "Практическая значимость", desc: "Ученики видят, как теория применяется в реальных задачах — это меняет мотивацию к учёбе" },
+    { icon: "Network", title: "Межпредметные связи",     desc: "Математика, информатика и науки образуют единую исследовательскую систему" },
+    { icon: "Award",   title: "Мотивация через успех",   desc: "Реальные проекты формируют чувство значимости работы и желание двигаться дальше" },
+    { icon: "Brain",   title: "Критическое мышление",    desc: "Исследования развивают умение ставить гипотезы и проверять их на данных" },
+    { icon: "Users",   title: "Командная работа",        desc: "Совместные проекты учат коммуникации, распределению ролей, ответственности" },
+    { icon: "Repeat",  title: "Цифровая грамотность",   desc: "Освоение профессиональных инструментов даёт конкурентное преимущество" },
+  ];
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "2rem 2.5rem", overflow: "hidden", gap: 16 }}>
+      <SH num="08" title="Преимущества подхода" />
+      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+        {items.map((item, i) => (
+          <Card key={i} style={{ padding: "1.1rem 1.2rem" }}>
+            <div style={{ width: 32, height: 32, borderRadius: 9, background: "rgba(200,169,110,.1)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>
+              <Icon name={item.icon as "Zap"} size={15} style={{ color: ACCENT }} />
+            </div>
+            <p style={{ fontFamily: "'Oswald',sans-serif", fontSize: 13, color: "#F0EDE8", letterSpacing: "0.04em", margin: "0 0 6px" }}>{item.title}</p>
+            <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 12, color: "rgba(240,237,232,.56)", lineHeight: 1.55, margin: 0 }}>{item.desc}</p>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function S9() {
+  const plans = [
+    { icon: "GitBranch", title: "Масштабирование",   desc: "Распространение проекта на параллельные классы и другие учреждения района" },
+    { icon: "Folder",    title: "Портфолио учащихся", desc: "Каждый проект становится частью цифрового портфолио для поступления и конкурсов" },
+    { icon: "Handshake", title: "Партнёрства",        desc: "Сотрудничество с родителями, специалистами, учёными и университетами" },
+    { icon: "Globe",     title: "Цифровая среда",     desc: "Единая онлайн-платформа для хранения и представления исследовательских работ" },
+  ];
+  return (
+    <div style={{ height: "100%", display: "flex", flexDirection: "column", padding: "2rem 2.5rem", overflow: "hidden", gap: 16 }}>
+      <SH num="09" title="Дальнейшее развитие" />
+      <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignContent: "center" }}>
+        {plans.map((p, i) => (
+          <Card key={i} style={{ padding: "1.3rem 1.5rem", display: "flex", gap: 14, alignItems: "flex-start" }}>
+            <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(200,169,110,.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon name={p.icon as "GitBranch"} size={17} style={{ color: ACCENT }} />
+            </div>
+            <div>
+              <p style={{ fontFamily: "'Oswald',sans-serif", fontSize: 14, color: "#F0EDE8", letterSpacing: "0.04em", margin: "0 0 5px" }}>{p.title}</p>
+              <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 12.5, color: "rgba(240,237,232,.56)", lineHeight: 1.6, margin: 0 }}>{p.desc}</p>
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function S10() {
+  return (
+    <div style={{ position: "relative", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", padding: "2rem", overflow: "hidden" }}>
+      <div style={{ position: "absolute", inset: 0, pointerEvents: "none", backgroundImage: "linear-gradient(rgba(200,169,110,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(200,169,110,.04) 1px,transparent 1px)", backgroundSize: "60px 60px" }} />
+      <div style={{ position: "absolute", top: "18%", left: "18%", right: "18%", bottom: "18%", borderRadius: "50%", background: "radial-gradient(circle,rgba(200,169,110,.07) 0%,transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ position: "relative" }}>
+        <div style={{ fontFamily: "'Cormorant',serif", fontSize: "clamp(3rem,7vw,5.5rem)", color: ACCENT, opacity: .1, lineHeight: 1, marginBottom: "-1rem" }}>✦</div>
+        <h2 style={{ fontFamily: "'Cormorant',serif", fontSize: "clamp(1.7rem,4vw,3rem)", fontWeight: 600, color: "#F0EDE8", lineHeight: 1.22, margin: "0 0 1.25rem" }}>Спасибо за внимание!</h2>
+        <div style={{ width: 64, height: 2, background: `linear-gradient(90deg,transparent,${ACCENT},transparent)`, margin: "0 auto 1.75rem" }} />
+        <p style={{ fontFamily: "'IBM Plex Sans',sans-serif", fontSize: 14, color: "rgba(240,237,232,.46)", margin: "0 0 6px" }}>[ФИО учителя] · [Должность]</p>
+        <p style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: "rgba(200,169,110,.4)", margin: 0 }}>[Школа] · [Населённый пункт] · [Контакт]</p>
+      </div>
+    </div>
+  );
+}
+
+const SLIDES = [S0,S1,S2,S3,S4,S5,S6,S7,S8,S9,S10];
+const LABELS = ["Титул","Актуальность","Задачи","Методология","Этапы","Ресурсы","Пример","Оценка","Преимущества","Развитие","Финал"];
+
+// ── MAIN ─────────────────────────────────────────────────────────────────────
 
 export default function Index() {
-  const active = useScrollSpy();
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [cur, setCur] = useState(0);
+  const [dir, setDir] = useState<1|-1>(1);
+  const [anim, setAnim] = useState(false);
+  const total = SLIDES.length;
 
-  const scrollTo = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-    setMenuOpen(false);
-  };
+  const go = useCallback((idx: number) => {
+    if (anim || idx === cur || idx < 0 || idx >= total) return;
+    setDir(idx > cur ? 1 : -1);
+    setAnim(true);
+    setTimeout(() => { setCur(idx); setAnim(false); }, 220);
+  }, [anim, cur, total]);
+
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if (["ArrowRight","ArrowDown"," "].includes(e.key)) { e.preventDefault(); go(cur + 1); }
+      if (["ArrowLeft","ArrowUp"].includes(e.key)) { e.preventDefault(); go(cur - 1); }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [go, cur]);
+
+  const SlideEl = SLIDES[cur];
 
   return (
-    <div className="min-h-screen" style={{ background: "#05081C", color: "#E2E8F0", fontFamily: "'IBM Plex Sans', sans-serif" }}>
-      {/* NAV */}
-      <nav
-        className="fixed top-0 left-0 right-0 z-50 border-b"
-        style={{ background: "rgba(5,8,28,0.93)", backdropFilter: "blur(12px)", borderColor: "#0F1A36" }}
-      >
-        <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full animate-pulse" style={{ background: "#4FC3F7" }} />
-            <span style={{ fontFamily: "'Oswald', sans-serif", fontSize: "13px", letterSpacing: "0.15em", color: "#CBD5E1", textTransform: "uppercase" }}>
-              Точка роста
-            </span>
-          </div>
-          <div className="hidden md:flex items-center gap-1">
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => scrollTo(item.id)}
-                className="px-3 py-1.5 rounded transition-all text-xs"
-                style={{
-                  fontFamily: "'IBM Plex Mono', monospace",
-                  color: active === item.id ? "#4FC3F7" : "#94a3b8",
-                  background: active === item.id ? "rgba(79,195,247,0.1)" : "transparent",
-                }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-          <button className="md:hidden" style={{ color: "#94a3b8" }} onClick={() => setMenuOpen(!menuOpen)}>
-            <Icon name={menuOpen ? "X" : "Menu"} size={20} />
-          </button>
+    <div style={{ background: DARK, height: "100vh", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      {/* TOP */}
+      <div style={{ background: "rgba(15,25,35,.96)", borderBottom: `1px solid ${BORDER}`, padding: "0 1.25rem", height: 42, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ width: 6, height: 6, borderRadius: "50%", background: ACCENT }} />
+          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: "rgba(200,169,110,.55)", letterSpacing: "0.2em", textTransform: "uppercase" }}>Точка роста · Презентация</span>
         </div>
-        {menuOpen && (
-          <div
-            className="md:hidden border-t px-4 pb-4 pt-2 flex flex-col gap-1"
-            style={{ borderColor: "#0F1A36", background: "rgba(5,8,28,0.98)" }}
-          >
-            {NAV_ITEMS.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => scrollTo(item.id)}
-                className="text-left px-3 py-2 text-sm rounded"
-                style={{ fontFamily: "'IBM Plex Mono', monospace", color: active === item.id ? "#4FC3F7" : "#94a3b8" }}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        )}
-      </nav>
+        <div style={{ display: "flex", alignItems: "center", gap: 3 }}>
+          {LABELS.map((lbl, i) => (
+            <button key={i} onClick={() => go(i)} title={lbl}
+              style={{ width: 26, height: 26, borderRadius: 6, border: "none", cursor: "pointer", background: cur === i ? "rgba(200,169,110,.14)" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", transition: "background .15s" }}>
+              <div style={{ width: cur === i ? 12 : 4, height: 4, borderRadius: 2, background: cur === i ? ACCENT : "rgba(200,169,110,.22)", transition: "all .2s" }} />
+            </button>
+          ))}
+        </div>
+        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "rgba(200,169,110,.4)" }}>{cur + 1} / {total}</span>
+      </div>
 
-      {/* HERO */}
-      <section id="hero" className="relative min-h-screen flex items-center overflow-hidden">
-        <div className="absolute inset-0 pointer-events-none">
-          <div
-            className="absolute inset-0"
-            style={{ background: "radial-gradient(ellipse 80% 60% at 60% 40%, rgba(37,99,235,0.12) 0%, transparent 70%)" }}
-          />
-          <svg className="absolute inset-0 w-full h-full opacity-5" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#4FC3F7" strokeWidth="0.5" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#grid)" />
-          </svg>
+      {/* SLIDE */}
+      <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+        <div style={{
+          position: "absolute", inset: 0,
+          opacity: anim ? 0 : 1,
+          transform: anim ? `translateY(${dir > 0 ? 16 : -16}px)` : "translateY(0)",
+          transition: "opacity .22s ease, transform .22s ease",
+        }}>
+          <SlideEl />
         </div>
-        <div className="relative max-w-6xl mx-auto px-4 pt-24 pb-20 w-full">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <div
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full border mb-6"
-                style={{ borderColor: "#4FC3F7", color: "#4FC3F7", background: "rgba(79,195,247,0.08)", fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace" }}
-              >
-                <div className="w-1.5 h-1.5 rounded-full" style={{ background: "#4FC3F7" }} />
-                Центр «Точка роста» · 2024–2025
-              </div>
-              <h1
-                className="leading-tight mb-6"
-                style={{ fontFamily: "'Oswald', sans-serif", fontSize: "clamp(2.2rem, 5vw, 3.5rem)", color: "#E2E8F0" }}
-              >
-                Развитие<br />
-                <span style={{ color: "#4FC3F7" }}>исследовательских</span><br />
-                навыков подростков
-              </h1>
-              <p className="mb-8" style={{ color: "#94a3b8", fontSize: "1.1rem", lineHeight: "1.7" }}>
-                Интеграция цифровых технологий и математики в учебном процессе для учащихся 7-х классов
-              </p>
-              <div className="flex gap-3 flex-wrap">
-                <button
-                  onClick={() => scrollTo("relevance")}
-                  className="px-6 py-3 rounded transition-all hover:opacity-90 active:scale-95"
-                  style={{ background: "#4FC3F7", color: "#05081C", fontFamily: "'Oswald', sans-serif", fontSize: "14px", letterSpacing: "0.08em" }}
-                >
-                  Смотреть презентацию
-                </button>
-                <button
-                  onClick={() => scrollTo("results")}
-                  className="px-6 py-3 rounded border transition-all"
-                  style={{ borderColor: "#1E3A5F", color: "#E2E8F0", fontFamily: "'Oswald', sans-serif", fontSize: "14px", letterSpacing: "0.08em" }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = "rgba(255,255,255,0.04)")}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                >
-                  Результаты →
-                </button>
-              </div>
-            </div>
-            <div className="relative hidden lg:block">
-              <div
-                className="absolute inset-0 rounded-2xl"
-                style={{ background: "radial-gradient(circle, rgba(79,195,247,0.12) 0%, transparent 70%)" }}
-              />
-              <div className="grid grid-cols-2 gap-3">
-                {ADVANTAGES.map((a, i) => (
-                  <div
-                    key={i}
-                    className="rounded-xl p-5 border"
-                    style={{ background: "#0A1128", borderColor: "#0F1A36" }}
-                  >
-                    <div className="text-2xl mb-1" style={{ color: a.color, fontFamily: "'Oswald', sans-serif" }}>
-                      <AnimatedNumber target={parseInt(a.val.replace(/\D/g, ""))} suffix={a.val.replace(/\d/g, "")} />
-                    </div>
-                    <p style={{ color: "#64748b", fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace", lineHeight: 1.4 }}>
-                      {a.label}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 animate-bounce">
-            <Icon name="ChevronDown" size={20} style={{ color: "#1E3A5F" }} />
-          </div>
-        </div>
-      </section>
+      </div>
 
-      {/* RELEVANCE */}
-      <section id="relevance" className="py-24 border-t" style={{ borderColor: "#0F1A36" }}>
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex items-center gap-3 mb-12">
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px", color: "#4FC3F7" }}>01 /</span>
-            <h2 style={{ fontFamily: "'Oswald', sans-serif", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: "#E2E8F0" }}>
-              Актуальность проекта
-            </h2>
-          </div>
-          <div className="grid lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 rounded-2xl p-8 border" style={{ background: "#0A1128", borderColor: "#0F1A36" }}>
-              <h3 className="text-xl mb-4" style={{ fontFamily: "'Oswald', sans-serif", color: "#CBD5E1" }}>Почему это важно?</h3>
-              <p className="leading-relaxed mb-6" style={{ color: "#94a3b8", lineHeight: "1.75" }}>
-                В эпоху цифровой трансформации способность анализировать данные и проводить самостоятельные
-                исследования становится базовым навыком для успешной карьеры. Традиционная система образования
-                не всегда успевает за темпом технологических изменений — центр «Точка роста» восполняет этот пробел.
-              </p>
-              <div className="grid sm:grid-cols-2 gap-4">
-                {[
-                  { icon: "Target", title: "Целевая группа", desc: "Учащиеся 7-х классов (12–14 лет) — период формирования исследовательского интереса" },
-                  { icon: "BookOpen", title: "Предметная область", desc: "Математика и цифровые технологии в рамках программы центра «Точка роста»" },
-                  { icon: "Clock", title: "Длительность", desc: "Учебный год 2024–2025, 34 занятия по 45 минут" },
-                  { icon: "MapPin", title: "Место реализации", desc: "Кабинет «Точка роста», оснащённый современным оборудованием" },
-                ].map((item, i) => (
-                  <div key={i} className="flex gap-3 p-3 rounded-lg" style={{ background: "rgba(255,255,255,0.03)" }}>
-                    <div className="w-8 h-8 rounded flex items-center justify-center flex-shrink-0" style={{ background: "rgba(79,195,247,0.1)" }}>
-                      <Icon name={item.icon as "Target"} size={16} style={{ color: "#4FC3F7" }} />
-                    </div>
-                    <div>
-                      <p className="text-sm mb-0.5" style={{ fontFamily: "'Oswald', sans-serif", color: "#CBD5E1" }}>{item.title}</p>
-                      <p style={{ color: "#64748b", fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace", lineHeight: 1.45 }}>{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-2xl p-8 border" style={{ background: "#0A1128", borderColor: "#0F1A36" }}>
-              <h3 className="text-xl mb-6" style={{ fontFamily: "'Oswald', sans-serif", color: "#CBD5E1" }}>Динамика показателей</h3>
-              <BarChart />
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* BOTTOM */}
+      <div style={{ background: "rgba(15,25,35,.96)", borderTop: `1px solid ${BORDER}`, padding: "0 1.25rem", height: 48, display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+        <button onClick={() => go(cur - 1)} disabled={cur === 0}
+          style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: 8, border: `1px solid ${BORDER}`, background: "transparent", cursor: cur === 0 ? "not-allowed" : "pointer", opacity: cur === 0 ? 0.3 : 1, transition: "opacity .15s" }}>
+          <Icon name="ChevronLeft" size={15} style={{ color: ACCENT }} />
+          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: "rgba(240,237,232,.65)" }}>Назад</span>
+        </button>
 
-      {/* TASKS */}
-      <section id="tasks" className="py-24 border-t" style={{ borderColor: "#0F1A36" }}>
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex items-center gap-3 mb-12">
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px", color: "#4FC3F7" }}>02 /</span>
-            <h2 style={{ fontFamily: "'Oswald', sans-serif", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: "#E2E8F0" }}>
-              Основные задачи
-            </h2>
-          </div>
-          <div className="grid md:grid-cols-3 gap-6">
-            {TASKS.map((task, i) => (
-              <div
-                key={i}
-                className="rounded-2xl p-6 border group transition-all duration-300"
-                style={{ background: "#0A1128", borderColor: "#0F1A36" }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(79,195,247,0.3)")}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#0F1A36")}
-              >
-                <div
-                  className="text-5xl font-bold mb-4"
-                  style={{ fontFamily: "'IBM Plex Mono', monospace", color: "#4FC3F7", opacity: 0.2 }}
-                >
-                  {task.num}
-                </div>
-                <h3 className="text-xl mb-3" style={{ fontFamily: "'Oswald', sans-serif", color: "#E2E8F0" }}>{task.title}</h3>
-                <p className="text-sm leading-relaxed mb-4" style={{ color: "#94a3b8", lineHeight: "1.65" }}>{task.desc}</p>
-                <div className="space-y-2">
-                  {task.sub.map((s, j) => (
-                    <div key={j} className="flex items-center gap-2" style={{ fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace", color: "#64748b" }}>
-                      <div className="w-1 h-1 rounded-full flex-shrink-0" style={{ background: "#4FC3F7" }} />
-                      {s}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          {Array.from({ length: total }).map((_, i) => (
+            <button key={i} onClick={() => go(i)}
+              style={{ width: i === cur ? 18 : 5, height: 5, borderRadius: 3, border: "none", cursor: "pointer", background: i === cur ? ACCENT : "rgba(200,169,110,.2)", transition: "all .25s", padding: 0 }} />
+          ))}
         </div>
-      </section>
 
-      {/* ADVANTAGES */}
-      <section id="advantages" className="py-24 border-t" style={{ borderColor: "#0F1A36" }}>
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex items-center gap-3 mb-12">
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px", color: "#4FC3F7" }}>03 /</span>
-            <h2 style={{ fontFamily: "'Oswald', sans-serif", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: "#E2E8F0" }}>
-              Преимущества подхода
-            </h2>
-          </div>
-          <div className="grid lg:grid-cols-2 gap-10 items-center">
-            <div>
-              <p className="mb-8 text-lg leading-relaxed" style={{ color: "#94a3b8", lineHeight: "1.75" }}>
-                Интеграция цифровых технологий в обучение создаёт синергетический эффект: ученики видят
-                практическое применение теории, а исследовательская деятельность становится естественной частью учёбы.
-              </p>
-              <div className="space-y-4">
-                {[
-                  { icon: "Zap", title: "Мгновенная обратная связь", desc: "Цифровые инструменты позволяют сразу видеть результат эксперимента" },
-                  { icon: "Network", title: "Межпредметные связи", desc: "Математика, информатика и естественные науки объединяются в единую систему" },
-                  { icon: "Trophy", title: "Мотивация через достижение", desc: "Реальные исследовательские проекты создают ощущение значимости работы" },
-                ].map((item, i) => (
-                  <div
-                    key={i}
-                    className="flex gap-4 p-4 rounded-xl border transition-all"
-                    style={{ background: "#0A1128", borderColor: "#0F1A36" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.borderColor = "rgba(79,195,247,0.2)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#0F1A36")}
-                  >
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: "rgba(79,195,247,0.1)" }}>
-                      <Icon name={item.icon as "Zap"} size={20} style={{ color: "#4FC3F7" }} />
-                    </div>
-                    <div>
-                      <p className="text-sm mb-1" style={{ fontFamily: "'Oswald', sans-serif", color: "#CBD5E1" }}>{item.title}</p>
-                      <p style={{ fontSize: "12px", fontFamily: "'IBM Plex Mono', monospace", color: "#64748b" }}>{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="rounded-2xl p-8 border" style={{ background: "#0A1128", borderColor: "#0F1A36" }}>
-              <h3 className="text-xl mb-1" style={{ fontFamily: "'Oswald', sans-serif", color: "#CBD5E1" }}>Развитие компетенций</h3>
-              <p style={{ fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace", color: "#64748b", marginBottom: "1.5rem" }}>
-                Сравнительный анализ до и после программы
-              </p>
-              <RadarChart />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* EQUIPMENT */}
-      <section id="equipment" className="py-24 border-t" style={{ borderColor: "#0F1A36" }}>
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex items-center gap-3 mb-12">
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px", color: "#4FC3F7" }}>04 /</span>
-            <h2 style={{ fontFamily: "'Oswald', sans-serif", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: "#E2E8F0" }}>
-              Оборудование центра
-            </h2>
-          </div>
-          <div className="grid md:grid-cols-2 gap-6 mb-8">
-            {EQUIPMENT.map((eq, i) => (
-              <div key={i} className="rounded-2xl overflow-hidden border" style={{ borderColor: "#0F1A36" }}>
-                <div className="h-56 overflow-hidden">
-                  <img
-                    src={eq.img}
-                    alt={eq.name}
-                    className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
-                  />
-                </div>
-                <div className="p-6" style={{ background: "#0A1128" }}>
-                  <h3 className="text-xl mb-2" style={{ fontFamily: "'Oswald', sans-serif", color: "#E2E8F0" }}>{eq.name}</h3>
-                  <p style={{ color: "#64748b", fontSize: "12px", fontFamily: "'IBM Plex Mono', monospace" }}>{eq.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="rounded-2xl p-6 border" style={{ background: "#0A1128", borderColor: "#0F1A36" }}>
-            <h3 className="text-lg mb-4" style={{ fontFamily: "'Oswald', sans-serif", color: "#CBD5E1" }}>
-              Программное обеспечение и платформы
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {["GeoGebra", "Microsoft Excel", "Python", "Scratch", "Яндекс Учебник", "РЭШ", "Wolfram Alpha", "Desmos", "Google Таблицы", "Kahoot"].map(
-                (tool) => (
-                  <span
-                    key={tool}
-                    className="px-3 py-1 rounded-full border"
-                    style={{ borderColor: "#0F1A36", color: "#94a3b8", background: "rgba(255,255,255,0.04)", fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace" }}
-                  >
-                    {tool}
-                  </span>
-                )
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* RESULTS */}
-      <section id="results" className="py-24 border-t" style={{ borderColor: "#0F1A36" }}>
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex items-center gap-3 mb-12">
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: "12px", color: "#4FC3F7" }}>05 /</span>
-            <h2 style={{ fontFamily: "'Oswald', sans-serif", fontSize: "clamp(1.6rem, 3vw, 2.2rem)", color: "#E2E8F0" }}>
-              Оценка результатов
-            </h2>
-          </div>
-          <div className="grid md:grid-cols-4 gap-4 mb-12">
-            {ADVANTAGES.map((a, i) => (
-              <div key={i} className="rounded-2xl p-6 border text-center" style={{ background: "#0A1128", borderColor: "#0F1A36" }}>
-                <div className="w-10 h-10 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ background: `${a.color}22` }}>
-                  <Icon name={a.icon as "Cpu"} size={20} style={{ color: a.color }} />
-                </div>
-                <div className="text-3xl mb-2" style={{ fontFamily: "'Oswald', sans-serif", color: a.color }}>
-                  <AnimatedNumber target={parseInt(a.val.replace(/\D/g, ""))} suffix={a.val.replace(/\d/g, "")} />
-                </div>
-                <p style={{ fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace", color: "#64748b", lineHeight: 1.4 }}>{a.label}</p>
-              </div>
-            ))}
-          </div>
-          <h3 className="text-2xl mb-6" style={{ fontFamily: "'Oswald', sans-serif", color: "#CBD5E1" }}>Отзывы участников</h3>
-          <div className="grid md:grid-cols-3 gap-6">
-            {FEEDBACK.map((fb, i) => (
-              <div key={i} className="rounded-2xl p-6 border" style={{ background: "#0A1128", borderColor: "#0F1A36" }}>
-                <div className="text-3xl mb-4" style={{ color: "#4FC3F7", fontFamily: "'Oswald', sans-serif", lineHeight: 1 }}>"</div>
-                <p className="text-sm leading-relaxed mb-4" style={{ color: "#94a3b8", lineHeight: "1.7", fontStyle: "italic" }}>
-                  {fb.text}
-                </p>
-                <div className="border-t pt-4" style={{ borderColor: "#0F1A36" }}>
-                  <p className="text-sm" style={{ fontFamily: "'Oswald', sans-serif", color: "#CBD5E1" }}>{fb.name}</p>
-                  <p style={{ fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace", color: "#64748b" }}>{fb.role}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="border-t py-10" style={{ borderColor: "#0F1A36" }}>
-        <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div>
-            <p className="text-lg" style={{ fontFamily: "'Oswald', sans-serif", color: "#CBD5E1", letterSpacing: "0.05em" }}>
-              Центр «Точка роста»
-            </p>
-            <p style={{ fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace", color: "#334155" }}>
-              Развитие исследовательских навыков подростков · 2024–2025
-            </p>
-          </div>
-          <div className="flex items-center gap-2" style={{ fontSize: "11px", fontFamily: "'IBM Plex Mono', monospace", color: "#1E3A5F" }}>
-            <Icon name="GraduationCap" size={14} style={{ color: "#1E3A5F" }} />
-            <span>Интеграция цифровых технологий в образование</span>
-          </div>
-        </div>
-      </footer>
+        <button onClick={() => go(cur + 1)} disabled={cur === total - 1}
+          style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 14px", borderRadius: 8, border: `1px solid rgba(200,169,110,.4)`, background: cur === total - 1 ? "transparent" : "rgba(200,169,110,.1)", cursor: cur === total - 1 ? "not-allowed" : "pointer", opacity: cur === total - 1 ? 0.3 : 1, transition: "opacity .15s" }}>
+          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: ACCENT }}>Далее</span>
+          <Icon name="ChevronRight" size={15} style={{ color: ACCENT }} />
+        </button>
+      </div>
     </div>
   );
 }
